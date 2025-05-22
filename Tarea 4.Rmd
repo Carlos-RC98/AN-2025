@@ -1,0 +1,418 @@
+---
+title: "Tarea 4. Series Temporales en Python"
+author: "Carlos Alberto Ramírez Cázares"
+date: "2025-05-15"
+output: html_document
+---
+
+
+<style>
+body {
+text-align: justify}
+</style>
+``
+
+```{python}
+import matplotlib.pyplot as plt
+import pandas as pd
+from datetime import datetime
+from statsmodels.tsa.seasonal import seasonal_decompose 
+import matplotlib.colors as mcolors
+import seaborn as sns 
+from statsmodels.tsa.stattools import acf 
+from statsmodels.tsa.stattools import adfuller
+import calendar
+import plotly.graph_objects as go
+from statsmodels.tsa.ar_model import AutoReg
+```
+
+
+# Gráficas de una serie temporal {.tabset}
+
+Las **Series temporales**son una sucesión de observaciones registradas a intervalos de tiempo regulares. Estas son fundamentales en modelado predictivo y análisis de datos en diversas disciplinas. 
+
+
+```{python}
+inegi_data = pd.read_excel(r"C:/Users/Ch4rl/Downloads/inegi_data.xlsxl")
+inegi_data['Periodo'] = pd.to_datetime(inegi_data["Periodo"])
+filtered_data = inegi_data[inegi_data['Periodo'].dt.year >= 2016]
+
+print(filtered_data["Periodo"].dt.year.unique())
+```
+
+
+## Serie 
+
+```{python}
+inegi_xts = pd.Series(filtered_data["Actividades_Primarias"].values, index=filtered_data['Periodo']).dropna()
+print(inegi_xts.describe())
+
+plt.figure(figsize=(10, 6))
+plt.plot(inegi_xts, label="Actividades Primarias", color=sns.color_palette("magma", n_colors=5)[3])
+plt.title("Serie Temporal de las Actividades Primarias")
+plt.xlabel("Periodo")
+plt.ylabel("Actividades Primarias")
+plt.legend()
+plt.grid(True, linestyle="--", alpha=0.7)
+plt.show()
+```
+
+
+## Comparación anual 
+
+```{python}
+inegi_xts_df = inegi_xts.to_frame(name="Actividades_Primarias")
+inegi_xts_df["Año"] = inegi_xts.index.year
+inegi_xts_df["Mes"] = inegi_xts.index.month
+
+plt.figure(figsize=(10,6))
+sns.lineplot(data = inegi_xts_df, x="Mes", y="Actividades_Primarias", hue="Año", palette = sns.color_palette("magma", n_colors=10))
+plt.title("Comparación Anual de la Serie Temporal")
+plt.xlabel("Mes")
+plt.ylabel("Ciclo de Frecuencia")
+plt.legend(title="Año")
+plt.grid(True, linestyle="--", alpha=0.8)
+plt.show()
+```
+
+
+## Comparación Mensual 
+
+```{python}
+df = filtered_data.copy()
+df["Año"] = df["Periodo"].dt.year
+df["Mes"] = df["Periodo"].dt.month
+
+plt.figure(figsize=(10,6))
+sns.lineplot(data=df, x="Año", y="Actividades_Primarias", hue="Mes", marker="o", palette = sns.color_palette("magma", n_colors=12))
+
+plt.xlabel("Año")
+plt.ylabel("Actividad Primaria")
+plt.title("Actividades Primarias Mensual")
+
+mes = sorted(df["Mes"].unique())
+labels = [calendar.month_abbr [m] for m in mes]
+plt.legend(title="Mes", labels=labels)
+plt.grid(True)
+plt.tight_layout()
+plt.show()
+```
+
+```{python}
+fechas = pd.date_range(start="2016-01-01", end="2025-01-01", freq="ME")
+datos = [float(i) for i in range(len(fechas))]
+inegi_xts = pd.Series(data=datos, index=fechas)
+
+inegi_xts.index = pd.to_datetime(inegi_xts.index)
+inegi_xts = inegi_xts.asfreq("ME")
+
+mensual = seasonal_decompose(inegi_xts, model="additive", period=12)
+
+plt.figure(figsize=(10,6))
+plt.plot(mensual.seasonal, label="Actividad Primaria", color=sns.color_palette("magma", n_colors=5)[4])
+plt.xlabel("Periodo")
+plt.ylabel("Estacionalidad")
+plt.title("Actividad Primaria")
+plt.legend()
+plt.grid(True, linestyle="--", alpha=0.7)
+plt.show()
+```
+
+## Boxplot trimestral 
+
+```{python}
+inegi_data["Periodo"] = pd.to_datetime(inegi_data["Periodo"])
+inegi_data["Año"] = inegi_data["Periodo"].dt.year
+inegi_data["Trimestre"] = inegi_data["Periodo"].dt.to_period("Q").astype(str)
+
+filtered_data = inegi_data[(inegi_data["Año"] >= 2016) & (inegi_data["Año"] <= 2025)]
+
+plt.figure(figsize=(10, 6))
+sns.boxplot(
+    data=filtered_data,
+    x="Trimestre",
+    y="Actividades_Primarias",
+    hue="Año",
+    palette="viridis"
+)
+
+plt.xlabel("Trimestre")
+plt.ylabel("Actividades Primarias")
+plt.title("Boxplot Trimestral de las Actividades Primarias (2016-2025)")
+plt.legend(title="Año", bbox_to_anchor=(1.05, 1), loc="upper left")
+plt.xticks(rotation=45)
+plt.tight_layout()
+plt.show()
+```
+
+## Heatmap
+
+```{python}
+inegi_data["Periodo"] = pd.to_datetime(inegi_data["Periodo"])
+inegi_data["Año"] = inegi_data["Periodo"].dt.year
+inegi_data["Trimestre"] = inegi_data["Periodo"].dt.to_period("Q")
+
+heatmap = df.pivot(index="Mes", columns="Año", values="Actividades_Primarias")
+
+plt.figure(figsize=(10,6))
+sns.heatmap(heatmap, cmap="Spectral", annot=True, fmt=".2f", linewidths=0.5)
+
+plt.title("Mapa de Calor de las Actividades Primarias")
+plt.xlabel("Año")
+plt.ylabel("Mes")
+plt.yticks(ticks=range(1,13), labels=["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"])
+plt.tight_layout()
+plt.show()
+```
+
+## Surface
+
+```{python}
+df["Año"] = df["Periodo"].dt.year
+df["Mes"] = df["Periodo"].dt.month
+
+heatmap_df = df.pivot_table(values="Actividades_Primarias", index="Mes", columns="Año", aggfunc="mean")
+heatmap_df = heatmap_df.fillna(0)
+
+Z = heatmap_df.values  
+x = heatmap_df.columns.astype(str)  
+y = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
+
+fig = go.Figure(data=[go.Surface(z=Z, x=x, y=y, colorscale="Viridis")])
+fig.update_layout(
+    title='Superficie 3D de las Actividades Primarias',
+    scene=dict(
+        xaxis_title="Año",
+        yaxis_title="Mes",
+        zaxis_title="Actividades Primarias"
+    ),
+    autosize=True,
+    height=600
+)
+fig.show()
+```
+
+
+# Estadisticas de una serie temporal 
+
+## Media Muestral 
+
+La media muestral es el promedio de los valores de la serie temporal a lo largo del tiempo. Se calcula:
+
+\begin{equation}
+\bar{y}=\frac{1}{T} \sum_{t=1}^T y_t
+\end{equation}
+
+Donde $T$ es el número total de observaciones de la serie y $y_t$ es el valor de la serie en el tiempo $t$.
+
+```{python}
+media = inegi_xts.mean()
+print(f"La media muestral es: {media}")
+```
+
+
+## Varianza Muestral 
+
+La varianza muestral cuantifica la dispersión de los valores de la serie alrededor de su media. Se calcula:
+
+
+\begin{equation}
+s^2=\frac{1}{T-1} \sum_{t=1}^T (y_t-\bar{y})^2
+\end{equation}
+
+```{python}
+varianza = inegi_xts.var()
+print(f"La varianza es: {varianza}")
+```
+
+
+## Autocovarianza muestral 
+
+Cuantifica la covarianza entre dos valores de la serie separados por un retraso (lag) $k$. Se calcula:
+
+\begin{equation}
+\gamma_k=\frac{1}{T} \sum_{t=k+1}^T (y_t-\bar{y})(y_{t-k}-\bar{y})
+\end{equation}
+
+En este caso $y_{t-k}$ es el valor de la serie en el tiempo $t-k$.
+
+
+## Autocorrelación muestral {.tabset}
+
+Es una versión normalizada de la autocovarianza, mide la correlacion entre dos valores de la serie separados por un retraso $k$, se calcula:
+
+\begin{equation}
+\rho_k=\frac{\gamma_k}{\gamma_0}
+\end{equation}
+
+
+### Autocorrelación
+
+```{python}
+autocorrelacion = acf(inegi_xts, fft="True", nlags=20)
+
+plt.figure(figsize=(10,6))
+plt.stem(range(len(autocorrelacion)), autocorrelacion, basefmt=" ")
+plt.title("Autocorrelación")
+plt.xlabel("Lag")
+plt.ylabel("Autocorrelación")
+plt.grid(True, linestyle="--", alpha=0.8)
+plt.show()
+```
+
+### Lags 
+
+```{python}
+max_lag= 18
+plt.figure(figsize=(10,6))
+
+for lag in range (1, max_lag + 1): 
+  plt.plot(inegi_xts.index, inegi_xts.shift(lag), label=f"lag{lag}")
+
+plt.legend()
+plt.grid(True, linestyle="--", alpha=0.8)
+plt.show()
+```
+
+
+## Estacionariedad
+
+```{python}
+estacionariedad = adfuller(inegi_xts)
+print(f"{estacionariedad}")
+```
+**La serie no es estacionaria**
+
+## Diferenciación 
+
+Si la serie no es estacionaria, se puede aplicar diferenciación para eliminar la tendencia.
+
+```{python}
+inegi_xts = pd.Series(filtered_data["Actividades_Primarias"].values, index=filtered_data["Periodo"]).dropna()
+inegi_diff = inegi_xts.diff().dropna()
+
+plt.figure(figsize=(10,6))
+plt.plot(inegi_diff, label="Diferenciación de la Serie", color= "red")
+plt.title("Serie Temporal Diferenciada")
+plt.xlabel("Periodo")
+plt.ylabel("Diferenciación")
+plt.legend()
+plt.grid(True, linestyle="--", alpha=0.8)
+plt.show()
+```
+
+
+# Descomposición {.tabset}
+
+Una serie temporal $y_t$ puede descomponerse en la suma (aditiva) de sus componentes principales:
+
+
+\begin{equation}
+y_t = T_t+S_t+R_t
+\end{equation}
+
+Donde $T_t$ es la tendencia (movimiento a largo plazo), $S_t$ es la estacionalidad (patrones repetitivos en intervalos regulares) y $R_t$ es el residuo (ruido aleatorio). O bien, de manera multiplicativa:
+
+\begin{equation}
+y_t = T_t S_t R_t
+\end{equation}
+
+
+## Serie Original 
+
+**Descomposición aditiva**
+
+```{python}
+descomposicion = seasonal_decompose(inegi_xts, model= "additive", period=12)
+
+plt.figure(figsize=(12,8))
+descomposicion.plot()
+plt.show()
+```
+
+## Serie Diferenciada 
+
+**Descomposición aditiva**
+
+```{python}
+inegi_diff = inegi_xts.diff().dropna()
+descomposicion_diff = seasonal_decompose(inegi_diff, model= "additive", period=12)
+
+plt.figure(figsize=(12,8))
+descomposicion_diff.plot()
+plt.show()
+```
+
+
+# AutoRegresión {.tabset}
+
+## Coeficientes 
+
+```{python}
+inegi_ts = inegi_xts.asfreq("MS") 
+inegi_ar_model = AutoReg(inegi_ts, lags=5, old_names=False).fit()
+print(inegi_ar_model.summary())
+```
+
+
+## Gráfica 
+`
+```{python}
+inegi_ts.index = pd.to_datetime(inegi_ts.index, errors="coerce") 
+inegi_ar_res = pd.DataFrame({
+  "inegi": inegi_ts, 
+  "inegi_fitted": inegi_ts - inegi_ar_model.resid
+})
+
+plt.figure(figsize=(10,6))
+plt.plot(inegi_ar_res.index, inegi_ar_res["inegi"], label="Original", color="blue", alpha=0.8)
+plt.plot(inegi_ar_res.index, inegi_ar_res["inegi_fitted"], label="Ajustado",
+color="red",linestyle="--")
+
+plt.title("Datos Originales y Ajustados del Modelo Autoregresivo")
+plt.xlabel("Periodo")
+plt.ylabel("Valores")
+plt.legend()
+plt.grid(True, linestyle="--", alpha=0.5)
+plt.show()
+```
+
+
+## Residuos 
+
+```{python}
+plt.figure(figsize=(10,6))
+plt.plot(inegi_ar_model.resid, label="Residuos", color="red")
+plt.title("Residuos del Modelo Autoregresivo")
+plt.xlabel("Periodo")
+plt.ylabel("Residuos")
+plt.axhline(0, color="purple", linestyle="--", linewidth=1, alpha=0.5)
+plt.legend()
+plt.grid(True, linestyle="--", alpha=0.8)
+plt.show()
+```
+
+
+## Forecast 
+
+```{python}
+forecast_steps = 12
+forecast_valores = inegi_ar_model.forecast(steps=forecast_steps)
+forecast_index = pd.date_range(start=inegi_ts.index[-1] + pd.offsets.MonthBegin(1), periods=forecast_steps, freq="MS")
+
+inegi_forecast = pd.DataFrame({
+  "Forecast": forecast_valores
+},index=forecast_index)
+
+plt.figure(figsize=(10,6))
+plt.plot(inegi_ts, label="Original", color="blue")
+plt.plot(inegi_ar_res["inegi_fitted"], label="Ajustado", color="orange")
+plt.plot(inegi_forecast.index, inegi_forecast["Forecast"], label="Pronóstico", color="green", linestyle="--")
+plt.title=("Forecast del Modelo Autoregresivo")
+plt.xlabel("Periodo")
+plt.ylabel("Valores")
+plt.legend()
+plt.grid(True, linestyle="--", alpha=0.8)
+plt.show()
+```
+

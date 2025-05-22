@@ -1,0 +1,453 @@
+---
+title: "Tarea 3. Regresiones Lineales"
+author: "Carlos Alberto Ramírez Cázares"
+date: "2025-05-15"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 1
+    theme: cerulean
+---
+
+
+<style>
+body {
+text-align: justify}
+</style>
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(knitr)
+library(tidyverse)
+library(pracma)
+library(plotly)
+library(MASS)
+library(ISLR2)
+library(car)
+library(corrplot)
+library(rgl)
+library(scatterPlotMatrix)
+
+
+library(openxlsx)
+library(readxl)
+library(writexl)
+library(quantmod)
+library(xts)
+library(zoo)
+library(dygraphs)
+
+library (dplyr)
+
+knitr::knit_hooks$set(webgl = hook_webgl)
+```
+
+
+INEGI
+
+```{r}
+inegi_data <- read_xlsx(""C:/Users/Ch4rl/Downloads/inegi_subdata.xlsx"")
+```
+
+## Análisis de Correlación
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+data_numeric <- inegi_data %>% select_if(is.numeric)
+
+corr_matrix <- cor(data_numeric, use= "complete.obs")
+
+print("Análisis de Correlación:")
+print(corr_matrix)
+```
+
+
+# Regresiones Lineales Simples
+
+
+## Actividades Terciarias ~ Indicador Global de la Actividad Economica
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+modelo <- lm(Indicador_Global_Actividad_Economica ~ Actividades_Terciarias, data = inegi_data) 
+
+print("Modelo de Regresión Lineal:")
+summary(modelo)
+```
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+ggplot(data = inegi_data, aes(x = Actividades_Terciarias, y = Indicador_Global_Actividad_Economica))+
+  geom_point(color = "green", size = 3)+
+  geom_smooth(method = "lm", formula = y ~ x, color = "red", se=FALSE)+
+  labs(
+    title= "Actividades Terciarias vs Indicador Global de Actividad Económica", x = "Actividades Terciarias", y="Indicador Global de Actividad Económica")+
+  theme_bw()
+```
+
+¿Qué nos dice?
+
+El modelo muestra una relación fuerte entre las actividades terciarias y el IGAE. Por cada unidad de actividad terciaria, el IGAE sube 0.877, con un intercepto de 12.9125. Además, el 99% de su variabilidad está asociada a estas actividades.
+
+
+## Precios Consumidor ~ Actividades Terciarias 
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+modelo <- lm(Precios_Consumidor ~ Actividades_Terciarias, data = inegi_data) 
+
+print("Modelo de Regresión Lineal:")
+summary(modelo)
+```
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+ggplot(data = inegi_data, aes(x = Actividades_Terciarias, y = Precios_Consumidor))+
+  geom_point(color = "yellow", size = 3)+
+  geom_smooth(method = "lm", formula = y ~ x, color = "lightblue", se=FALSE)+
+  labs(
+    title= "Precios al Consumidor vs Actividades Terciarias", x = "Actividades Terciarias", y="Precios al Consumidor")+
+  theme_bw()
+```
+
+¿Qué nos dice?
+
+Se muestra que las actividades terciarias influyen en los precios al consumidor. Con un Multiple R² de 0.9374, estas actividades explican casi toda su variabilidad. Además, un aumento de una unidad en las actividades terciarias eleva los precios en 1.96 unidades.
+
+
+## Exportaciones Totales ~ Importaciones Totales
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+modelo <- lm(Exportaciones_Totales ~ Importaciones_totales, data = inegi_data) 
+
+print("Modelo de Regresión Lineal:")
+summary(modelo)
+```
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+ggplot(data = inegi_data, aes(x = Importaciones_totales, y = Exportaciones_Totales))+
+  geom_point(color = "pink", size = 3)+
+  geom_smooth(method = "lm", formula = y ~ x, color = "darkgreen", se=FALSE)+
+  labs(
+    title= "Exportaciones Totales vs Importaciones Totales", x = "Importaciones Totales", y="Exportaciones Totales")+
+  theme_bw()
+```
+
+¿Qué nos dice? 
+
+El modelo indica una fuerte relación entre exportaciones e importaciones. Cada unidad adicional de importaciones aumenta las exportaciones en 0.9902 unidades. Además, las importaciones explican el 98.68% de la variabilidad en las exportaciones.
+
+## Actividad Industrial ~ Indicador Global de Actividad Económica
+
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+modelo <- lm(Actividad_Industrial ~ Indicador_Global_Actividad_Economica, data = inegi_data) 
+
+print("Modelo de Regresión Lineal:")
+summary(modelo)
+```
+
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+ggplot(data = inegi_data, aes(x = Indicador_Global_Actividad_Economica, y = Actividad_Industrial))+
+  geom_point(color = "orange", size = 3)+
+  geom_smooth(method = "lm", formula = y ~ x, color = "white", se=FALSE)+
+  labs(
+    title= "Actividad Industrial vs Indicador Global de Actividad Económica", x = "Indicador Global de Actividad Economica", y="Actividad Industrial")+
+  theme_bw()
+```
+
+
+¿Qué nos dice?
+
+El IGAE y la actividad industrial tienen una relación fuerte. Cada unidad adicional del IGAE aumenta la actividad industrial en 0.77307 unidades. Incluso con un IGAE de cero, la actividad industrial mantiene un nivel base de 24.40423. Además, el IGAE explica el 91.97% de su variabilidad.
+
+## Exportaciones Petroleras ~ Precio Promedio del Petróleo Crudo
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+modelo <- lm(Exportaciones_Petroleras ~ Precio_Promedio_Petroleo_Crudo, data = inegi_data) 
+
+print("Modelo de Regresión Lineal:")
+summary(modelo)
+```
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+ggplot(data = inegi_data, aes(x = Precio_Promedio_Petroleo_Crudo, y = Exportaciones_Petroleras))+
+  geom_point(color = "gold", size = 3)+
+  geom_smooth(method = "lm", formula = y ~ x, color = "brown", se=FALSE)+
+  labs(
+    title= "Exportaciones Petroleras vs Precio Promedio del Petróleo Crudo", x = "Precio Promedio de Petróleo Crudo", y="Exportaciones Petroleras")+
+  theme_bw()
+```
+
+
+¿Qué nos dice?
+
+
+El modelo de regresión lineal indica que las exportaciones petroleras dependen del precio del petróleo crudo. Cada unidad extra en su precio aumenta las exportaciones en 40.1449 unidades. Además, el 88.79% de su variabilidad se explica por estos cambios.
+
+
+## Importaciones No Petroleras ~ Exportaciones No Petroleras
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+modelo <- lm(Importaciones_No_Petroleras ~ Exportaciones_No_Petroleras, data = inegi_data) 
+
+print("Modelo de Regresión Lineal:")
+summary(modelo)
+```
+
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+ggplot(data = inegi_data, aes(x = Exportaciones_No_Petroleras, y = Importaciones_No_Petroleras))+
+  geom_point(color = "grey", size = 3)+
+  geom_smooth(method = "lm", formula = y ~ x, color = "blue", se=FALSE)+
+  labs(
+    title= "Importaciones No Petroleras vs Exportaciones No Petroleras", x = "Exportaciones No Petroleras", y="Importaciones No Petroleras")+
+  theme_bw()
+```
+
+
+¿Qué nos dice?
+
+
+El modelo de regresión lineal indica una relación fuerte entre importaciones y exportaciones no petroleras. Las exportaciones explican el 98.33% de la variabilidad en las importaciones, aumentando 0.9280 unidades por cada unidad adicional, con un intercepto de 0.002146.
+
+
+# Regresiones Lineales Múltiples
+
+## Indicador Global de Actividad Económica ~ Actividades Primarias + Actividad Industrial
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+modelo <- lm(Indicador_Global_Actividad_Economica ~ Actividades_Primarias + Actividad_Industrial, data = inegi_data)
+print("Modelo de Regresión Lineal Múltiple")
+summary(modelo)
+```
+
+
+```{r webgl=TRUE, echo=FALSE, warning=FALSE, message=FALSE}
+scatter3d(Indicador_Global_Actividad_Economica ~ Actividades_Primarias + Actividad_Industrial, data= inegi_data, fit="linear", residuals=TRUE, bg="darkorange", axis.scales=TRUE, 
+  grid=TRUE, ellipsoid=FALSE)
+```
+
+
+¿Qué nos dice?
+
+
+El modelo de regresión lineal múltiple indica que el IGAE aumenta 0.186393 unidades por cada unidad adicional de actividades primarias y 1.002374 unidades por cada unidad extra de actividad industrial. La actividad industrial tiene un mayor impacto en el IGAE que las actividades primarias.
+
+## Precios al Consumidor ~ Actividades Terciarias + Precio Promedio de Petróleo Crudo
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+modelo <- lm(Indicador_Global_Actividad_Economica ~ Actividades_Terciarias + Precio_Promedio_Petroleo_Crudo, data = inegi_data)
+print("Modelo de Regresión Lineal Múltiple")
+summary(modelo)
+```
+
+
+```{r webgl=TRUE, echo=FALSE, warning=FALSE, message=FALSE}
+scatter3d(Indicador_Global_Actividad_Economica ~ Actividades_Terciarias + Precio_Promedio_Petroleo_Crudo, data= inegi_data, fit="linear", residuals=TRUE, bg="lightgreen", axis.scales=TRUE, 
+  grid=TRUE, ellipsoid=FALSE)
+```
+
+
+¿Qué nos dice?
+
+
+El modelo muestra que el IGAE depende de las actividades terciarias y el precio del petróleo crudo. Cada unidad adicional de actividades terciarias aumenta el IGAE en 0.861570 unidades, mientras que un incremento unitario en el precio del petróleo crudo lo eleva en 0.013318 unidades. Las actividades terciarias tienen mayor impacto que el precio del petróleo.
+
+
+## Tendencia de Empleo Manufacturero ~ Actividad Industrial + Importaciones No Petroleras
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+modelo <- lm(Tendencia_Empleo_Manufacturas ~ Actividad_Industrial + Importaciones_No_Petroleras, data = inegi_data)
+print("Modelo de Regresión Lineal Múltiple")
+summary(modelo)
+```
+
+```{r webgl=TRUE, echo=FALSE, warning=FALSE, message=FALSE}
+scatter3d(Tendencia_Empleo_Manufacturas ~ Actividad_Industrial + Importaciones_No_Petroleras, data= inegi_data, fit="linear", residuals=TRUE, bg="red", axis.scales=TRUE, 
+  grid=TRUE, ellipsoid=FALSE)
+```
+
+
+¿Qué nos dice?
+
+
+El modelo de regresión múltiple muestra que la actividad industrial y las importaciones no petroleras influyen en el empleo manufacturero. Cada unidad extra de actividad industrial lo aumenta en 0.1754 unidades, mientras que las importaciones no petroleras lo incrementan en 0.0001909 unidades. La actividad industrial tiene un impacto mayor.
+
+
+## Indicador Global de Actividad Económica ~ Precios al Consumidor Subyacente + Precios al Consumidor 
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+modelo <- lm(Indicador_Global_Actividad_Economica ~ Precios_Consumidor_Subyacente + Precios_Consumidor, data = inegi_data)
+print("Modelo de Regresión Lineal Múltiple")
+summary(modelo)
+```
+
+```{r webgl=TRUE, echo=FALSE, warning=FALSE, message=FALSE}
+scatter3d(Indicador_Global_Actividad_Economica ~ Precios_Consumidor_Subyacente + Precios_Consumidor, data= inegi_data, fit="linear", residuals=TRUE, bg="red", axis.scales=TRUE, 
+  grid=TRUE, ellipsoid=FALSE)
+```
+
+
+¿Qué nos dice?
+
+Se observa una correlación entre los precios al consumidor subyacentes y el IGAE. Cada unidad adicional de precios subyacentes aumenta el IGAE en 0.5744 unidades, mientras que un incremento en el índice de precios al consumidor lo reduce en 0.1382 unidades, aunque con un efecto poco significativo.
+
+
+# PRECIO CIERRE: ACCIONES
+
+```{r}
+e_cierre <- read_xlsx("C:/Users/Ch4rl/Downloads/precio_cierre_df.xlsx")
+```
+
+## Análisis de Correlación 
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+data_numeric <- e_cierre %>% select_if(is.numeric)
+
+corr_matrix <- cor(data_numeric, use= "complete.obs")
+
+print("Análisis de Correlación:")
+print(corr_matrix)
+```
+
+```{r, echo=FALSE}
+corrplot(corr_matrix)
+```
+
+
+# Regresiones Lineales Simples
+
+## Microsoft ~ Oracle 
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+modelo <- lm(MSFT.Close ~ ORCL.Close, data = e_cierre) 
+
+print("Modelo de Regresión Lineal:")
+summary(modelo)
+```
+
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+ggplot(data = e_cierre, aes(x = ORCL.Close, y = MSFT.Close))+
+  geom_point(color = "purple", size = 2)+
+  geom_smooth(method = "lm", formula = y ~ x, color = "lightgreen", se=FALSE)+
+  labs(
+    title= "Microsoft vs Oracle", x = "Oracle", y="Microsoft")+
+  theme_bw()
+```
+
+
+¿Qué nos dice?
+
+El modelo de regresión lineal muestra una relación fuerte entre los precios de cierre de Microsoft y Oracle. El precio de Oracle explica el 83% de la variabilidad en Microsoft, y cada unidad adicional en Oracle aumenta el precio de Microsoft en 2.13839 unidades.
+
+
+## Apple ~ Oracle 
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+modelo <- lm(AAPL.Close ~ ORCL.Close, data = e_cierre) 
+
+print("Modelo de Regresión Lineal:")
+summary(modelo)
+```
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+ggplot(data = e_cierre, aes(x = ORCL.Close, y = AAPL.Close))+
+  geom_point(color = "blue", size = 2)+
+  geom_smooth(method = "lm", formula = y ~ x, color = "darkorange", se=FALSE)+
+  labs(
+    title= "Apple vs Oracle", x = "Oracle", y="Apple")+
+  theme_bw()
+```
+
+
+¿Qué nos dice? 
+
+
+El modelo muestra una relación positiva y estable entre Apple y Oracle. Oracle explica el 83.91% de la variabilidad en Apple, y cada unidad adicional en su precio de cierre aumenta el de Apple en 1.14266 unidades, confirmando su impacto significativo.
+
+
+## Google ~ Microsoft 
+
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+modelo <- lm(GOOGL.Close ~ MSFT.Close, data = e_cierre) 
+
+print("Modelo de Regresión Lineal:")
+summary(modelo)
+```
+
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+ggplot(data = e_cierre, aes(x = MSFT.Close, y = GOOGL.Close))+
+  geom_point(color = "lightgreen", size = 2)+
+  geom_smooth(method = "lm", formula = y ~ x, color = "darkred", se=FALSE)+
+  labs(
+    title= "Google vs Microsoft", x = "Microsoft", y="Google")+
+  theme_bw()
+```
+
+¿Qué nos dice?
+
+
+Se muestra que Microsoft influye en los precios de cierre de Google. Cada unidad adicional en Microsoft aumenta Google en 0.396128 unidades, y el 89% de su variabilidad está explicado por Microsoft.
+
+
+# Regresiones Lineales Múltiples
+
+## Meta ~ Amazon + Salesforce
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+modelo <- lm(META.Close ~ AMZN.Close + CRM.Close, data = e_cierre)
+print("Modelo de Regresión Lineal Múltiple")
+summary(modelo)
+```
+
+```{r webgl=TRUE, echo=FALSE, warning=FALSE, message=FALSE}
+scatter3d(META.Close ~ AMZN.Close + CRM.Close, data = e_cierre, fit="linear", residuals=TRUE, bg="dodgerblue", axis.scales=TRUE, 
+  grid=TRUE, ellipsoid=FALSE)
+```
+
+
+¿Qué nos dice?
+
+
+El modelo de regresión múltiple muestra que Amazon y Salesforce influyen significativamente en el precio de cierre de Meta. Cada unidad adicional en Amazon lo aumenta en 1.68549 unidades, mientras que Salesforce lo incrementa en 1.42859 unidades. Además, el 81.16% de su variabilidad se explica por estos factores.
+
+
+## Apple ~ Oracle + Tesla 
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+modelo <- lm(AAPL.Close ~ ORCL.Close + TSLA.Close, data = e_cierre)
+print("Modelo de Regresión Lineal Múltiple")
+summary(modelo)
+```
+
+```{r webgl=TRUE, echo=FALSE, warning=FALSE, message=FALSE}
+scatter3d(AAPL.Close ~ ORCL.Close + TSLA.Close, data = e_cierre, fit="linear", residuals=TRUE, bg="dodgerblue", axis.scales=TRUE, 
+  grid=TRUE, ellipsoid=FALSE)
+```
+
+¿Qué nos dice? 
+
+El modelo indica que Oracle y Tesla influyen en el precio de cierre de Apple. Oracle tiene un mayor impacto, aumentando Apple en 0.943980 unidades por cada unidad adicional, mientras que Tesla lo incrementa en 0.155137 unidades. Además, el 90.75% de su variabilidad se explica por estos factores.
+
+
+## Google ~ Microsoft + NVIDIA 
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+modelo <- lm(GOOGL.Close ~ MSFT.Close + NVDA.Close, data = e_cierre)
+print("Modelo de Regresión Lineal Múltiple")
+summary(modelo)
+```
+
+```{r webgl=TRUE, echo=FALSE, warning=FALSE, message=FALSE}
+scatter3d(GOOGL.Close ~ MSFT.Close + NVDA.Close, data = e_cierre, fit="linear", residuals=TRUE, bg="lightblue", axis.scales=TRUE, 
+  grid=TRUE, ellipsoid=FALSE)
+```
+
+¿Qué nos dice?
+
+El modelo muestra que Microsoft tiene una fuerte relación positiva con Google, aumentando su precio de cierre en 0.388655 unidades por cada unidad adicional. NVIDIA también influye, pero con un impacto menor de 0.016475 unidades y sin un coeficiente significativo. Microsoft es el principal predictor.
+
+
+
+
